@@ -1,0 +1,35 @@
+# Crop and Blend 超参数配置
+
+# 数据筛选
+filter:
+  min_body_short_edge: 100  # body_bbox 短边最小像素值
+
+# Crop and Transform 参数
+crop:
+  padding_ratio: 0.15  # 最长边两边向外 padding 的比例
+  background_color: [255, 255, 255]  # 白色背景 (BGR)
+
+# Blending 参数
+blend:
+  blur_sigma_ratio: 0.01  # 高斯模糊 sigma 占长边的比例
+  transition_ratio: 0.05  # 边界渐变过渡宽度占长边的比例
+
+# Bbox 渲染参数
+render:
+  if_render_body: true  # 是否渲染 body bbox
+  if_render_face: false  # 是否渲染 face bbox
+  face_bbox_color: [0, 255, 0]  # 绿色 (BGR)
+  body_bbox_color: [0, 0, 255]  # 红色 (BGR)
+  line_thickness: 1  # 细线
+
+# 批量处理输出
+output:
+  target_folder: "crop_body_only"  # 输出目录名，保存在 local_data/{target_folder}
+
+# 数据路径
+data:
+  jsonl_files:
+    - "Album_A_detect_result.jsonl"
+    - "univer-light_detect_result.jsonl"
+  local_data_dir: "local_data"
+

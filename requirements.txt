@@ -1,0 +1,20 @@
+# CharmRanker 依赖
+
+# 图像处理
+opencv-python>=4.8.0
+
+# 人脸和人体检测
+mediapipe>=0.10.0
+
+# 进度条
+tqdm>=4.65.0
+
+# 数据处理
+numpy>=1.24.0
+
+# Web 可视化
+flask>=3.0.0
+
+# TrueSkill 评分
+trueskill>=0.4.5
+
