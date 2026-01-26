@@ -1,0 +1,40 @@
+# EloManager 配置文件
+
+# TrueSkill 相关参数
+trueskill:
+  mu: 25.0           # 初始分数平均值
+  sigma: 8.333       # 初始分数不确定度
+  beta: 4.166        # 技能方差
+  tau: 0.083         # 动态因子
+
+# Triplet Propose 规则参数
+propose:
+  # 单节点温饱原则: 每个节点最少参与的比较次数
+  minimal_compare_times: 2
+  
+  # 邻近抽样原则: rank归一化到0-100后，triplet中最大-最小分位数的阈值
+  rank_threshold: 25
+  
+  # 高分多抽原则: 分数接近100时的权重（接近0时权重为1）
+  beauty_weight: 3.0
+  
+  # 构造候选triplet时的倍数（最终返回K个，先构造2K个候选）
+  candidate_multiplier: 2
+
+# 模拟参数
+simulation:
+  # 节点数量
+  n_nodes: 4000
+  
+  # 每次提出的triplet数量
+  batch_size: 10
+  
+  # 总循环次数
+  total_rounds: 3000
+  
+  # 每隔多少轮查看一次rank error
+  check_interval: 30
+  
+  # 随机种子
+  seed: 42
+
