@@ -601,6 +601,236 @@ def test_propose_rules():
     print("\n✓ propose 规则测试通过!")
 
 
+def run_simulation_with_anchors(
+    n_initial_nodes: int = 400,
+    batch_size: int = 10,
+    total_rounds: int = 300,
+    check_interval: int = 30,
+    new_node_interval: int = 30,
+    score_noise: float = 20.0,
+    seed: int = 42,
+    save_path: str = None
+) -> Tuple[List[int], List[float], List[int]]:
+    """
+    使用 get_anchors 和 add_node_with_score 的模拟实验。
+    
+    新节点的 relative_score 和真实 latent 平均相差 score_noise。
+    
+    Args:
+        n_initial_nodes: 初始节点数量
+        batch_size: 每次提出的triplet数量
+        total_rounds: 总循环次数
+        check_interval: 每隔多少轮检查一次rank error
+        new_node_interval: 每隔多少轮加入一个新节点
+        score_noise: 估计分数和真实分数的平均差值
+        seed: 随机种子
+        save_path: 保存路径（可选）
+        
+    Returns:
+        (rounds, errors, node_counts): 轮次列表、rank error列表、节点数量列表
+    """
+    print(f"Anchor模拟设置:")
+    print(f"  初始节点数量: {n_initial_nodes}")
+    print(f"  每批triplet: {batch_size}")
+    print(f"  总轮次: {total_rounds}")
+    print(f"  检查间隔: {check_interval}")
+    print(f"  新节点添加间隔: {new_node_interval}")
+    print(f"  分数噪声: ±{score_noise}")
+    print(f"  随机种子: {seed}")
+    print("=" * 60)
+    
+    # 初始化
+    rng = np.random.default_rng(seed)
+    logistic_k = compute_logistic_k()
+    
+    # 创建EloManager
+    manager = EloManager()
+    
+    # 生成初始节点和latent scores
+    node_infos = []
+    latent_scores = {}
+    next_node_id = 0
+    
+    for i in range(n_initial_nodes):
+        name = f"node_{next_node_id}"
+        latent = rng.uniform(1, 100)
+        node_infos.append({
+            'name': name,
+            'latent_score': latent
+        })
+        latent_scores[name] = latent
+        next_node_id += 1
+    
+    manager.add_nodes(node_infos)
+    
+    # 记录数据
+    rounds_list = []
+    errors_list = []
+    node_counts_list = []
+    
+    # 主循环
+    pbar = tqdm(range(total_rounds), desc="Anchor模拟")
+    
+    for round_idx in pbar:
+        # 提出triplet
+        try:
+            triplets = manager.propose_triplet(K=batch_size)
+        except ValueError as e:
+            print(f"轮次 {round_idx}: 无法提出triplet - {e}")
+            continue
+        
+        # 模拟比较
+        results = []
+        for triplet_info in triplets:
+            triplet = triplet_info['triplet']
+            result = simulate_triplet_comparison(
+                latent_scores, triplet, logistic_k, rng
+            )
+            results.append(result)
+        
+        # 提交结果
+        manager.submit_triplet_result(results, triplets)
+        
+        # 定期检查rank error
+        if (round_idx + 1) % check_interval == 0:
+            error = calculate_rank_error(latent_scores, manager)
+            rounds_list.append(round_idx + 1)
+            errors_list.append(error)
+            node_counts_list.append(len(manager.nodes))
+            
+            stats = manager.get_stats()
+            pbar.set_postfix({
+                'error': f'{error:.4f}',
+                'nodes': len(manager.nodes),
+                'hungry': stats['hungry_nodes'],
+                'comparisons': stats['total_comparisons']
+            })
+        
+        # 定期添加新节点（使用 get_anchors 和 add_node_with_score）
+        if (round_idx + 1) % new_node_interval == 0:
+            # 获取锚点
+            anchors = manager.get_anchors()
+            
+            # 为新节点生成真实的latent score
+            new_name = f"node_{next_node_id}"
+            new_latent = rng.uniform(1, 100)
+            
+            # 估计的 relative_score（与真实值有噪声）
+            # 真实的 percentile 大约是 new_latent (因为 latent 在 1-100 均匀分布)
+            noise = rng.uniform(-score_noise, score_noise)
+            estimated_score = np.clip(new_latent + noise, 0, 100)
+            
+            # 使用 add_node_with_score 添加新节点
+            new_node_info = {
+                'name': new_name,
+                'latent_score': new_latent
+            }
+            manager.add_node_with_score(new_node_info, estimated_score)
+            latent_scores[new_name] = new_latent
+            next_node_id += 1
+    
+    # 最终统计
+    final_error = calculate_rank_error(latent_scores, manager)
+    final_stats = manager.get_stats()
+    
+    print("\n" + "=" * 60)
+    print("Anchor模拟完成!")
+    print(f"  最终节点数: {len(manager.nodes)} (初始: {n_initial_nodes}, 新增: {len(manager.nodes) - n_initial_nodes})")
+    print(f"  最终rank error: {final_error:.4f}")
+    print(f"  总比较次数: {final_stats['total_comparisons']}")
+    print(f"  平均每节点参与次数: {final_stats['avg_compare_per_node']:.2f}")
+    print(f"  未温饱节点: {final_stats['hungry_nodes']}")
+    
+    # 测试 get_anchors
+    print("\n获取的锚点样本:")
+    anchors = manager.get_anchors()
+    for anchor in anchors:
+        print(f"  {anchor['name']}: percentile={anchor['percentile']:.1f}%, "
+              f"mu={anchor['mu']:.2f}, sigma={anchor['sigma']:.3f}, "
+              f"compare_count={anchor['compare_count']}")
+    
+    # 保存结果
+    if save_path:
+        manager.save(save_path)
+        print(f"  数据已保存到: {save_path}")
+    
+    return rounds_list, errors_list, node_counts_list
+
+
+def test_anchors_api():
+    """测试 get_anchors 和 add_node_with_score 接口"""
+    print("\n" + "=" * 60)
+    print("测试 get_anchors 和 add_node_with_score 接口")
+    print("=" * 60)
+    
+    rng = np.random.default_rng(789)
+    logistic_k = compute_logistic_k()
+    
+    manager = EloManager()
+    
+    # 添加初始节点
+    node_infos = []
+    latent_scores = {}
+    for i in range(100):
+        name = f"test_anchor_{i}"
+        latent = rng.uniform(1, 100)
+        node_infos.append({'name': name, 'latent_score': latent})
+        latent_scores[name] = latent
+    
+    manager.add_nodes(node_infos)
+    
+    # 运行一些比较
+    print("\n1. 运行50轮比较...")
+    for _ in range(50):
+        triplets = manager.propose_triplet(K=5)
+        results = []
+        for t in triplets:
+            result = simulate_triplet_comparison(latent_scores, t['triplet'], logistic_k, rng)
+            results.append(result)
+        manager.submit_triplet_result(results, triplets)
+    
+    # 测试 get_anchors
+    print("\n2. 测试 get_anchors:")
+    anchors = manager.get_anchors()
+    print(f"   获取到 {len(anchors)} 个锚点")
+    
+    for anchor in anchors:
+        pct = anchor['percentile']
+        print(f"   分位数 {pct:.1f}%: {anchor['name']}, "
+              f"compare_count={anchor['compare_count']}, sigma={anchor['sigma']:.3f}")
+    
+    # 验证分位数分布
+    percentiles = [a['percentile'] for a in anchors]
+    print(f"\n   分位数范围: {min(percentiles):.1f}% - {max(percentiles):.1f}%")
+    
+    # 测试 add_node_with_score
+    print("\n3. 测试 add_node_with_score:")
+    
+    # 添加一个高分节点
+    new_name_high = manager.add_node_with_score(
+        {'name': 'new_high', 'latent_score': 90},
+        relative_score=85  # 估计在85分位
+    )
+    latent_scores['new_high'] = 90
+    
+    # 添加一个低分节点
+    new_name_low = manager.add_node_with_score(
+        {'name': 'new_low', 'latent_score': 15},
+        relative_score=20  # 估计在20分位
+    )
+    latent_scores['new_low'] = 15
+    
+    # 查看新节点的初始分数
+    rankings = manager.get_rankings()
+    for name, mu, sigma in rankings:
+        if name in ['new_high', 'new_low']:
+            rank_idx = [r[0] for r in rankings].index(name)
+            pct = (len(rankings) - 1 - rank_idx) / (len(rankings) - 1) * 100
+            print(f"   {name}: mu={mu:.2f}, sigma={sigma:.3f}, 当前分位数={pct:.1f}%")
+    
+    print("\n✓ get_anchors 和 add_node_with_score 测试通过!")
+
+
 def main():
     """主函数"""
     import argparse
@@ -613,7 +843,9 @@ def main():
     parser.add_argument('--seed', type=int, default=42, help='随机种子')
     parser.add_argument('--test_only', action='store_true', help='仅运行单元测试')
     parser.add_argument('--dynamic', action='store_true', help='运行动态节点添加模拟')
+    parser.add_argument('--anchors', action='store_true', help='运行anchor模式模拟（使用get_anchors和add_node_with_score）')
     parser.add_argument('--new_node_interval', type=int, default=30, help='添加新节点的间隔轮次')
+    parser.add_argument('--score_noise', type=float, default=20.0, help='新节点估计分数的噪声范围')
     
     args = parser.parse_args()
     
@@ -621,9 +853,30 @@ def main():
         # 仅运行测试
         test_save_load()
         test_propose_rules()
+        test_anchors_api()
         return
     
-    if args.dynamic:
+    if args.anchors:
+        # 运行 anchor 模式模拟
+        save_path = project_root / "local_data" / "test_elo_manager"
+        
+        rounds, errors, node_counts = run_simulation_with_anchors(
+            n_initial_nodes=args.n_nodes,
+            batch_size=args.batch_size,
+            total_rounds=args.total_rounds,
+            check_interval=args.check_interval,
+            new_node_interval=args.new_node_interval,
+            score_noise=args.score_noise,
+            seed=args.seed,
+            save_path=str(save_path)
+        )
+        
+        # 绘制曲线
+        plot_dynamic_error_curve(
+            rounds, errors, node_counts,
+            output_path=save_path / "anchor_error_curve.jpg"
+        )
+    elif args.dynamic:
         # 运行动态节点模拟
         save_path = project_root / "local_data" / "test_elo_manager"
         

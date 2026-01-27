@@ -105,3 +105,37 @@
 然后每30个循环加入1个新节点的情况
 
 数据仍然存储到local_data/test_elo_manager (可以覆盖之前的jsonl)
+
+
+
+# 增加EloManager的接口
+
+## get_anchors( )
+
+这里我希望获取 分位数在 10%, 20%, ... 90% 附近，比较次数较多，sigma较小的样本
+
+具体这么做 对于 分位数 10i 正负 2 % 的区间内的数据
+
+只考虑标注次数最多的5个样本，并且以他们的1 /sigma^2 为权重进行抽样
+
+返回一个list of json 分别是这些节点的信息 额外增加一个字段是 分位数（0-100）（帮我确认是分数越高分位数也越高）
+
+## add_node_with_score( node, relative_score )
+
+这里会给定节点的时候 会给出分数的估计 这个时候你需要帮我把对应的mu给估计好
+
+## 新的测试
+
+帮我模拟一下初始有400个节点
+
+然后运行300个循环，每30个循环
+
+然后每30个循环加入1个新节点的情况
+（调用 get_anchors , add_node_with_score ）
+
+模拟的时候增加新节点的relative_score和真实的latent 平均相差20是可以的
+（和真实情况接近）
+
+保存到local_data/test_elo_manager(覆盖原来的jsonl可以)
+
+# triplet输出的时候 我需要保证

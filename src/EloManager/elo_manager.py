@@ -573,6 +573,151 @@ class EloManager:
             'hungry_nodes': len(hungry_nodes),
             'avg_compare_per_node': np.mean(list(self.node_compare_counts.values())) if self.node_compare_counts else 0
         }
+    
+    def get_anchors(self) -> List[Dict[str, Any]]:
+        """
+        获取各个分位数（10%, 20%, ... 90%）附近的锚点样本。
+        
+        对于每个分位数 10i%，取正负2%区间内的数据，
+        只考虑标注次数最多的5个样本，以 1/sigma^2 为权重进行抽样。
+        
+        Returns:
+            list of dict，每个元素包含节点信息和 percentile 字段（0-100，分数越高分位数越高）
+        """
+        # 获取所有节点的分数信息
+        final_scores = self.calculator.get_final_scores()
+        
+        if not final_scores:
+            return []
+        
+        # 计算每个节点的分位数（基于mu排序，分数越高分位数越高）
+        sorted_items = sorted(final_scores.items(), key=lambda x: x[1]['mu'])
+        n = len(sorted_items)
+        
+        node_percentiles = {}
+        for rank, (name, scores) in enumerate(sorted_items):
+            # 分位数：rank越高分数越高，所以 percentile = rank / (n-1) * 100
+            percentile = (rank / max(n - 1, 1)) * 100
+            node_percentiles[name] = {
+                'percentile': percentile,
+                'mu': scores['mu'],
+                'sigma': scores['sigma'],
+                'compare_count': self.node_compare_counts.get(name, 0)
+            }
+        
+        anchors = []
+        
+        # 对于每个目标分位数（10%, 20%, ..., 90%）
+        for target_pct in range(10, 100, 10):
+            # 找出在 [target_pct - 2, target_pct + 2] 区间内的节点
+            candidates = []
+            for name, info in node_percentiles.items():
+                if abs(info['percentile'] - target_pct) <= 2:
+                    candidates.append((name, info))
+            
+            if not candidates:
+                # 如果没有节点在区间内，放宽区间到 ±5
+                for name, info in node_percentiles.items():
+                    if abs(info['percentile'] - target_pct) <= 5:
+                        candidates.append((name, info))
+            
+            if not candidates:
+                continue
+            
+            # 只考虑标注次数最多的5个
+            candidates.sort(key=lambda x: x[1]['compare_count'], reverse=True)
+            top_candidates = candidates[:5]
+            
+            # 以 1/sigma^2 为权重进行抽样
+            weights = np.array([1.0 / (c[1]['sigma'] ** 2) for c in top_candidates])
+            weights = weights / weights.sum()
+            
+            # 加权抽样选择1个
+            idx = self.rng.choice(len(top_candidates), p=weights)
+            selected_name, selected_info = top_candidates[idx]
+            
+            # 构造返回结果
+            anchor = self.nodes[selected_name].copy()
+            anchor['name'] = selected_name
+            anchor['percentile'] = selected_info['percentile']
+            anchor['mu'] = selected_info['mu']
+            anchor['sigma'] = selected_info['sigma']
+            anchor['compare_count'] = selected_info['compare_count']
+            anchors.append(anchor)
+        
+        return anchors
+    
+    def add_node_with_score(
+        self, 
+        node_info: Dict[str, Any], 
+        relative_score: float
+    ) -> str:
+        """
+        添加带有分数估计的节点。
+        
+        根据 relative_score（0-100）估计节点的初始 mu 值。
+        
+        Args:
+            node_info: 节点信息
+            relative_score: 相对分数（0-100），表示该节点在所有节点中的预估位置
+            
+        Returns:
+            添加的节点名称
+        """
+        node_info = node_info.copy()
+        
+        # 获取或生成name
+        if 'name' in node_info:
+            name = node_info['name']
+        else:
+            name = self._generate_hash_name(node_info)
+            node_info['name'] = name
+        
+        # 检查是否重复
+        if name in self.nodes:
+            print(f"警告: 节点 {name} 已存在，跳过")
+            return name
+        
+        # 根据 relative_score 估计 mu
+        # 需要根据现有节点的分数分布来计算
+        final_scores = self.calculator.get_final_scores()
+        
+        if final_scores:
+            # 按mu排序获取分布
+            sorted_scores = sorted([s['mu'] for s in final_scores.values()])
+            n = len(sorted_scores)
+            
+            # 根据 relative_score 插值计算 mu
+            # relative_score=0 对应最低分，relative_score=100 对应最高分
+            if n == 1:
+                estimated_mu = sorted_scores[0]
+            else:
+                # 线性插值
+                position = (relative_score / 100) * (n - 1)
+                lower_idx = int(position)
+                upper_idx = min(lower_idx + 1, n - 1)
+                frac = position - lower_idx
+                
+                estimated_mu = sorted_scores[lower_idx] * (1 - frac) + sorted_scores[upper_idx] * frac
+        else:
+            # 没有现有分数，使用默认值
+            default_mu = self.config['trueskill']['mu']
+            # relative_score 偏移默认值
+            estimated_mu = default_mu + (relative_score - 50) * 0.5
+        
+        # 添加节点
+        self.nodes[name] = node_info
+        self.node_compare_counts[name] = 0
+        
+        # 设置初始 TrueSkill rating（使用估计的 mu，但 sigma 仍然较大表示不确定）
+        # 使用比默认稍小的 sigma，因为我们有一定的先验估计
+        initial_sigma = self.config['trueskill']['sigma'] * 0.8
+        self.calculator.ratings[name] = self.calculator.env.Rating(
+            mu=estimated_mu, 
+            sigma=initial_sigma
+        )
+        
+        return name
 
 
 if __name__ == "__main__":
