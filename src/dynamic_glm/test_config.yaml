@@ -1,0 +1,26 @@
+api:
+  budget: 2
+  model: glm-4.6v
+  temperature: 0.1
+  timeout: 120
+data:
+  input_dir: local_data/univer_female
+  sample_n: 10
+  save_path: local_data/glm_female_test
+parallel:
+  k_one_time: 2
+  max_workers: 2
+  timeout_warning_seconds: 60
+  wait_seconds: 2
+propose:
+  beauty_weight: 3
+  candidate_multiplier: 2
+  minimal_compare_times: 2
+  rank_threshold: 25
+simulation:
+  seed: 42
+trueskill:
+  beta: 4.166
+  mu: 25.0
+  sigma: 8.333
+  tau: 0.083

@@ -127,6 +127,82 @@ def test_openai():
         return False
 
 
+def test_gemini_flash():
+    """测试 Gemini 2.5 Flash API"""
+    print("\n" + "=" * 60)
+    print("测试 Gemini 2.5 Flash API")
+    print("=" * 60)
+    
+    try:
+        image_a, image_b, image_c = get_test_images()
+        print(f"图片 A: {image_a.name}")
+        print(f"图片 B: {image_b.name}")
+        print(f"图片 C: {image_c.name}")
+        
+        print("\n正在调用 Gemini 2.5 Flash API...")
+        result = compare_triplet(
+            image_a, image_b, image_c,
+            api_type="gemini",
+            model="gemini-2.5-flash"
+        )
+        
+        print("\n结果:")
+        print(f"   最具吸引力: {result['most_attractive']}")
+        print(f"   最不具吸引力: {result['least_attractive']}")
+        print(f"\n分析:")
+        print(f"   {result['analysis'][:200]}..." if len(result['analysis']) > 200 else f"   {result['analysis']}")
+        
+        # 保存结果
+        test_dir = Path(__file__).parent.parent.parent / "local_data" / "test" / "triplet"
+        save_result(result, "gemini_2.5_flash", test_dir)
+        
+        return True
+        
+    except Exception as e:
+        print(f"\nGemini 2.5 Flash 测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_gpt52():
+    """测试 GPT-5.2 API"""
+    print("\n" + "=" * 60)
+    print("测试 GPT-5.2 API")
+    print("=" * 60)
+    
+    try:
+        image_a, image_b, image_c = get_test_images()
+        print(f"图片 A: {image_a.name}")
+        print(f"图片 B: {image_b.name}")
+        print(f"图片 C: {image_c.name}")
+        
+        print("\n正在调用 GPT-5.2 API...")
+        result = compare_triplet(
+            image_a, image_b, image_c,
+            api_type="openai",
+            model="gpt-5.2"
+        )
+        
+        print("\n结果:")
+        print(f"   最具吸引力: {result['most_attractive']}")
+        print(f"   最不具吸引力: {result['least_attractive']}")
+        print(f"\n分析:")
+        print(f"   {result['analysis'][:200]}..." if len(result['analysis']) > 200 else f"   {result['analysis']}")
+        
+        # 保存结果
+        test_dir = Path(__file__).parent.parent.parent / "local_data" / "test" / "triplet"
+        save_result(result, "gpt_5.2", test_dir)
+        
+        return True
+        
+    except Exception as e:
+        print(f"\nGPT-5.2 测试失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def main():
     """主测试函数"""
     print("=" * 60)

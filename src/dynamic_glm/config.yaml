@@ -1,0 +1,39 @@
+# Dynamic GLM 颜值比较配置文件
+
+# 数据路径
+data:
+  input_dir: "local_data/univer_female"  # 输入图片目录
+  save_path: "local_data/glm_female"     # 输出保存路径
+  sample_n: 300                          # 采样数量，不设置则使用所有图片
+
+# 并行配置
+parallel:
+  max_workers: 6                        # 最大并行 worker 数量
+  k_one_time: 2                          # 每次调用 propose_triplet 的 K 值
+  wait_seconds: 5                        # 批次之间等待时间（秒）
+  timeout_warning_seconds: 180           # 超时报警阈值（秒，3分钟）
+
+# API 配置
+api:
+  model: "glm-4.6v"                       # GLM 模型名称
+  temperature: 0.1                        # 温度参数
+  timeout: 120                            # 单次 API 调用超时（秒）
+  budget: 1800                            # API 调用预算
+
+# TrueSkill 配置 (与 EloManager 保持一致)
+trueskill:
+  mu: 25.0                               # 初始均值
+  sigma: 8.333333333333334               # 初始标准差 (25/3)
+  beta: 4.166666666666667                # 技能不确定性 (25/6)
+  tau: 0.08333333333333333               # 动态因子 (25/300)
+
+# Propose 配置 (与 EloManager 保持一致)
+propose:
+  minimal_compare_times: 2               # 最小比较次数
+  rank_threshold: 25                     # 邻近抽样的分位数阈值
+  beauty_weight: 3                       # 高分多抽权重
+  candidate_multiplier: 2                # 候选 triplet 倍数
+
+# 模拟配置 (与 EloManager 保持一致)
+simulation:
+  seed: 42                               # 随机种子

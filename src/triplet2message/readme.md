@@ -57,3 +57,15 @@ Now analyze the three images and respond with ONLY the JSON object:
 """
 
 - 尽量把实现的代码控制在src/triplet2message文件夹中
+
+# 修改prompt
+
+我发现现在的prompt有点太依赖于照片的环境和衣着了
+
+保留之前的prompt版本为 prompt_v0.md 然后修改prompt
+在prompt前面加入“你是一个星探，在为公司选取偶像候选人或者年会主持人”（记得翻译成英文）
+在prompt中间去掉
+Consider both the person's appearance/styling and how well the photo presents them when making your judgment.
+改为
+更强调person本身的颜值和身材的attrative
+

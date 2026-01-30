@@ -1,7 +1,7 @@
 """
 GLM-4V 模型测试脚本
 
-测试智谱 AI glm-4.7 模型的 triplet 比较功能
+测试智谱 AI glm-4.6v 模型的 triplet 比较功能
 """
 
 import os
@@ -62,7 +62,7 @@ def build_glm_message(image_a: Path, image_b: Path, image_c: Path) -> dict:
     return {"messages": [{"role": "user", "content": content}]}
 
 
-def call_glm(message: dict, model: str = "glm-4v-plus", temperature: float = 0.1) -> str:
+def call_glm(message: dict, model: str = "glm-4.6v", temperature: float = 0.1) -> str:
     """调用 GLM API"""
     if not GLM_API_KEY:
         raise ValueError("请在 .env 文件中设置 GLM_API_KEY")
@@ -121,8 +121,8 @@ def main():
     """测试 GLM-4V 模型"""
     import argparse
     parser = argparse.ArgumentParser(description="测试智谱 AI GLM 视觉模型")
-    parser.add_argument("--model", "-m", default="glm-4v-plus", 
-                        help="模型名称 (默认: glm-4v-plus，可选: glm-4v, glm-4v-flash)")
+    parser.add_argument("--model", "-m", default="glm-4.6v", 
+                        help="模型名称 (默认: glm-4.6v，可选: glm-4v-plus, glm-4v-flash)")
     args = parser.parse_args()
     
     model = args.model

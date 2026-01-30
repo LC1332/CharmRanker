@@ -31,13 +31,15 @@ GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 
 # 默认模型
-DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview"
-DEFAULT_OPENAI_MODEL = "gpt-4o"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_OPENAI_MODEL = "gpt-5.2-chat-latest"
 
 # 颜值比较 Prompt
-ATTRACTIVENESS_PROMPT = """Please analyze these THREE images and identify which person is the MOST attractive and which person is the LEAST attractive.
+ATTRACTIVENESS_PROMPT = """You are a talent scout selecting potential idol candidates or annual gala hosts for your company.
 
-Consider both the person's appearance/styling and how well the photo presents them when making your judgment.
+Please analyze these THREE images and identify which person is the MOST attractive and which person is the LEAST attractive.
+
+Focus primarily on the person's inherent facial attractiveness and physical appearance (face, figure, body proportions) rather than clothing, background, or photo quality.
 
 The person to be evaluated in each image has been highlighted with a red bounding box.
 
@@ -264,6 +266,10 @@ def _call_openai(
     
     model = model or DEFAULT_OPENAI_MODEL
     url = f"{OPENAI_BASE_URL}/v1/chat/completions"
+    
+    # gpt-5.2-chat-latest 只支持 temperature=1
+    if "gpt-5.2-chat" in model:
+        temperature = 1.0
     
     headers = {
         "Authorization": f"Bearer {LUMOS_API}",
