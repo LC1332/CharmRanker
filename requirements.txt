@@ -18,3 +18,7 @@ flask>=3.0.0
 # TrueSkill 评分
 trueskill>=0.4.5
 
+# 性别检测
+insightface>=0.7.0
+onnxruntime>=1.16.0
+

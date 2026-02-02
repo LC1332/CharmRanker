@@ -1,0 +1,31 @@
+# GenderNormalizer 配置文件
+
+# 性别检测参数
+detection:
+  det_size: [640, 640]     # 检测尺寸
+  det_thresh: 0.5          # 检测阈值
+
+# Face to Body 推算参数（基于 crop_classify.jsonl 统计）
+face_to_body:
+  width_ratio: 2.5808      # body_width / face_size
+  height_ratio: 3.5081     # body_height / face_size
+  y_offset_ratio: 1.2315   # (body_center_y - face_center_y) / face_size
+  x_offset_ratio: 0.0      # x 偏移默认为 0
+
+# Crop 参数
+crop:
+  padding_ratio: 0.15      # 最长边两边向外 padding 的比例
+  background_color: [255, 255, 255]  # 白色背景 (BGR)
+
+# Blending 参数
+blend:
+  blur_sigma_ratio: 0.01   # 高斯模糊 sigma 占长边的比例
+  transition_ratio: 0.05   # 边界渐变过渡宽度占长边的比例
+
+# Bbox 渲染参数
+render:
+  render_body: true       # 是否渲染 body bbox
+  render_face: false       # 是否渲染 face bbox
+  body_bbox_color: [0, 0, 255]  # 红色 (BGR)
+  face_bbox_color: [0, 255, 0]  # 绿色 (BGR)
+  line_thickness: 2        # 线条粗细
