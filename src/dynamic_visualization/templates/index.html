@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态可视化 - CharmRanker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 0 12px 12px 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab-title {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Top 10 Grid */
+        .top-nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+        }
+
+        .node-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .node-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .node-rank {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .node-image-container {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+        }
+
+        .node-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .node-info {
+            padding: 12px;
+            text-align: center;
+        }
+
+        .node-name {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .node-scores {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+        }
+
+        .score-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .score-value.mu {
+            color: #667eea;
+        }
+
+        .score-value.sigma {
+            color: #764ba2;
+        }
+
+        /* Comparisons */
+        .comparison-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .comparison-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .comparison-time {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .comparison-result {
+            display: flex;
+            gap: 8px;
+        }
+
+        .result-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .result-badge.most {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .result-badge.least {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .comparison-images {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .comparison-image-card {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .comparison-image-card.most-attractive {
+            box-shadow: 0 0 0 4px #28a745;
+        }
+
+        .comparison-image-card.least-attractive {
+            box-shadow: 0 0 0 4px #dc3545;
+        }
+
+        .comparison-image {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+        }
+
+        .image-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .image-tag {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .image-tag.most {
+            background: #28a745;
+            color: white;
+        }
+
+        .image-tag.least {
+            background: #dc3545;
+            color: white;
+        }
+
+        .comparison-analysis {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .analysis-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .analysis-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* Anchors Grid */
+        .anchors-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 15px;
+        }
+
+        .anchor-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+
+        .anchor-card:hover {
+            transform: scale(1.05);
+        }
+
+        .anchor-percentile {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .anchor-image-container {
+            aspect-ratio: 1;
+            overflow: hidden;
+        }
+
+        .anchor-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .anchor-info {
+            padding: 8px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .anchor-stats {
+            display: flex;
+            justify-content: space-around;
+            color: #666;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ddd;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error */
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* Empty */
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .top-nodes-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .anchors-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-nodes-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .comparison-images {
+                grid-template-columns: 1fr;
+            }
+            .anchors-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 CharmRanker 动态可视化</h1>
+        
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('top10')">Top 10 排名</button>
+            <button class="tab-btn" onclick="switchTab('comparisons')">最近比较</button>
+            <button class="tab-btn" onclick="switchTab('anchors')">Anchor 样本</button>
+        </div>
+        
+        <!-- Tab 1: Top 10 -->
+        <div id="tab-top10" class="tab-content active">
+            <div class="tab-header">
+                <h2 class="tab-title">📊 Top 10 排名节点</h2>
+                <button class="refresh-btn" onclick="loadTopNodes()">🔄 刷新数据</button>
+            </div>
+            <div id="top-nodes-container">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+        
+        <!-- Tab 2: Recent Comparisons -->
+        <div id="tab-comparisons" class="tab-content">
+            <div class="tab-header">
+                <h2 class="tab-title">🔍 最近 5 个比较</h2>
+                <button class="refresh-btn" onclick="loadComparisons()">🔄 刷新数据</button>
+            </div>
+            <div id="comparisons-container">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+        
+        <!-- Tab 3: Anchors -->
+        <div id="tab-anchors" class="tab-content">
+            <div class="tab-header">
+                <h2 class="tab-title">⚓ Anchor 分位数样本</h2>
+                <button class="refresh-btn" onclick="loadAnchors()">🔄 刷新数据</button>
+            </div>
+            <div id="anchors-container">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Load data for the tab
+            if (tabName === 'top10') loadTopNodes();
+            else if (tabName === 'comparisons') loadComparisons();
+            else if (tabName === 'anchors') loadAnchors();
+        }
+
+        // Load Top 10 Nodes
+        async function loadTopNodes() {
+            const container = document.getElementById('top-nodes-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch('/api/top_nodes');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    container.innerHTML = `<div class="error">错误: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.nodes.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无数据</div>';
+                    return;
+                }
+                
+                let html = '<div class="top-nodes-grid">';
+                data.nodes.forEach((node, index) => {
+                    html += `
+                        <div class="node-card">
+                            <div class="node-image-container">
+                                <div class="node-rank">#${index + 1}</div>
+                                <img class="node-image" src="/images/${node.filename}" alt="${node.name}" loading="lazy">
+                            </div>
+                            <div class="node-info">
+                                <div class="node-name">${node.name}</div>
+                                <div class="node-scores">
+                                    <div class="score-item">
+                                        <div class="score-label">μ</div>
+                                        <div class="score-value mu">${node.mu}</div>
+                                    </div>
+                                    <div class="score-item">
+                                        <div class="score-label">σ</div>
+                                        <div class="score-value sigma">${node.sigma}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+
+        // Load Recent Comparisons
+        async function loadComparisons() {
+            const container = document.getElementById('comparisons-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch('/api/recent_comparisons');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    container.innerHTML = `<div class="error">错误: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.comparisons.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无比较数据</div>';
+                    return;
+                }
+                
+                let html = '';
+                data.comparisons.forEach(comp => {
+                    const timestamp = new Date(comp.timestamp).toLocaleString('zh-CN');
+                    
+                    html += `
+                        <div class="comparison-item">
+                            <div class="comparison-header">
+                                <span class="comparison-time">📅 ${timestamp}</span>
+                                <div class="comparison-result">
+                                    <span class="result-badge most">最佳: ${comp.most_attractive_label}</span>
+                                    <span class="result-badge least">最差: ${comp.least_attractive_label}</span>
+                                </div>
+                            </div>
+                            <div class="comparison-images">
+                    `;
+                    
+                    comp.images.forEach(img => {
+                        let cardClass = 'comparison-image-card';
+                        let tag = '';
+                        
+                        if (img.is_most_attractive) {
+                            cardClass += ' most-attractive';
+                            tag = '<div class="image-tag most">Most Attractive</div>';
+                        } else if (img.is_least_attractive) {
+                            cardClass += ' least-attractive';
+                            tag = '<div class="image-tag least">Least Attractive</div>';
+                        }
+                        
+                        html += `
+                            <div class="${cardClass}">
+                                <img class="comparison-image" src="/images/${img.filename}" alt="${img.name}" loading="lazy">
+                                <div class="image-label">${img.label}</div>
+                                ${tag}
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                            <div class="comparison-analysis">
+                                <div class="analysis-label">Analysis</div>
+                                <div class="analysis-text">${comp.analysis}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+
+        // Load Anchors
+        async function loadAnchors() {
+            const container = document.getElementById('anchors-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch('/api/anchors');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    container.innerHTML = `<div class="error">错误: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.anchors.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无 Anchor 数据</div>';
+                    return;
+                }
+                
+                let html = '<div class="anchors-grid">';
+                data.anchors.forEach(anchor => {
+                    html += `
+                        <div class="anchor-card">
+                            <div class="anchor-percentile">${anchor.percentile}%</div>
+                            <div class="anchor-image-container">
+                                <img class="anchor-image" src="/images/${anchor.filename}" alt="${anchor.name}" loading="lazy">
+                            </div>
+                            <div class="anchor-info">
+                                <div class="anchor-stats">
+                                    <span>μ: ${anchor.mu}</span>
+                                    <span>σ: ${anchor.sigma}</span>
+                                </div>
+                                <div style="color: #999; margin-top: 4px;">
+                                    比较: ${anchor.compare_count}次
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = `<div class="error">请求失败: ${error.message}</div>`;
+            }
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTopNodes();
+        });
+    </script>
+</body>
+</html>
