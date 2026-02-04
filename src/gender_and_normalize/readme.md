@@ -70,3 +70,20 @@ detect_with_gender( image, require_gender = 'any' )
 来把图crop出来 保存到local_data/univer_male_celeb
 然后按照local_data/univer_male.jsonl的格式写一个univer_male_celeb.jsonl
 
+这里有一个问题，有的图片不是以.jpg 而是可能以.jpg_xxx 的方式命名的
+这部分如果没有进行检测 帮我修改后重跑一下程序
+
+# 检查hash冲撞
+
+帮我检查下local_data/univer_female_celeb
+local_data/univer_female
+local_data/univer_male_celeb
+local_data/univer_male
+
+四个文件夹下的命名是否有冲撞 如果冲撞 帮我把对应文件名重命名，行重写
+
+# 清理local_data/univer_female
+
+我不当心把local_data/univer_male_celeb的图复制到了local_data/univer_female
+
+通过浏览local_data/univer_male_celeb的文件 如果文件出现在了univer_female 帮我把后者删除掉

@@ -1,10 +1,16 @@
 # 动态可视化配置文件
 
 # 结果数据文件夹（包含 nodes.json, response_logs.jsonl 等）
-result_folder: local_data/glm_female
+# result_folder: local_data/glm_female
+# result_folder: local_data/glm_male_univer
+# img_folder: local_data/univer_male
+
+result_folder: local_data/glm_female_univer
+img_folder: local_data/univer_female
 
 # 图片文件夹
-img_folder: local_data/univer_female
+# img_folder: local_data/univer_female
+
 
 # 服务器配置
 server:
